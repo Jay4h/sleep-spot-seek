@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/authStore';
-import ProfileCard from '@/components/common/ProfileCard';
 
 interface ProfileForm {
   name: string;
@@ -53,42 +52,49 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-accent/20 via-background to-secondary/10 py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
+    <div className="min-h-screen bg-muted/50 py-8">
+      <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-primary bg-clip-text text-transparent">My Profile</h1>
+          <h1 className="text-3xl font-bold mb-2">My Profile</h1>
           <p className="text-muted-foreground">Manage your account settings</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Animated Profile Card */}
-          <div className="lg:col-span-1 flex justify-center">
-            <ProfileCard
-              name={user.name}
-              title={user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-              handle={user.email.split('@')[0]}
-              status="Online"
-              contactText="Message"
-              avatarUrl={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
-              showUserInfo={true}
-              enableTilt={true}
-              enableMobileTilt={false}
-              onContactClick={() => {
-                toast({
-                  title: 'Contact Feature',
-                  description: 'Messaging feature coming soon!',
-                });
-              }}
-            />
-          </div>
+          {/* Profile Card */}
+          <Card className="lg:col-span-1">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center">
+                <div className="relative">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback className="text-2xl">
+                      {user.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <button className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 hover:bg-primary-hover transition-colors">
+                    <Camera className="h-4 w-4" />
+                  </button>
+                </div>
+                <h2 className="text-xl font-semibold mt-4">{user.name}</h2>
+                <p className="text-sm text-muted-foreground capitalize">{user.role}</p>
+                <Button
+                  variant="outline"
+                  className="w-full mt-4"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Back to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Profile Details */}
-          <Card className="lg:col-span-2 shadow-medium border-border/50">
-            <CardHeader className="space-y-1">
+          <Card className="lg:col-span-2">
+            <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl">Personal Information</CardTitle>
+                <CardTitle>Personal Information</CardTitle>
                 {!isEditing && (
-                  <Button variant="outline" onClick={() => setIsEditing(true)} className="rounded-xl">
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>
                     Edit Profile
                   </Button>
                 )}
@@ -150,29 +156,18 @@ const Profile = () => {
                 </div>
 
                 {isEditing && (
-                  <div className="flex gap-3">
-                    <Button type="submit" className="flex-1 rounded-xl h-11">
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1">
                       Save Changes
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setIsEditing(false)}
-                      className="rounded-xl"
                     >
                       Cancel
                     </Button>
                   </div>
-                )}
-
-                {!isEditing && (
-                  <Button
-                    variant="secondary"
-                    className="w-full rounded-xl h-11"
-                    onClick={() => navigate('/dashboard')}
-                  >
-                    Back to Dashboard
-                  </Button>
                 )}
               </form>
             </CardContent>

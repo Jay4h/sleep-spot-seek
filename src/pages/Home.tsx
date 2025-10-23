@@ -1,12 +1,10 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Shield, Clock, Star, MapPin, Building2, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Shield, Clock, Star, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import SearchBar from '@/components/common/SearchBar';
 import PropertyCard from '@/components/common/PropertyCard';
 import { Property } from '@/types';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
 
 // Mock data - will be replaced with API calls
 const featuredProperties: Property[] = [
@@ -64,12 +62,12 @@ const featuredProperties: Property[] = [
 ];
 
 const popularCities = [
-  { name: 'Bangalore', properties: '500+', icon: '🏙️' },
-  { name: 'Pune', properties: '350+', icon: '🌆' },
-  { name: 'Hyderabad', properties: '400+', icon: '🏛️' },
-  { name: 'Delhi', properties: '600+', icon: '🕌' },
-  { name: 'Mumbai', properties: '550+', icon: '🌃' },
-  { name: 'Chennai', properties: '300+', icon: '🏖️' },
+  { name: 'Bangalore', count: '500+ PGs' },
+  { name: 'Pune', count: '350+ PGs' },
+  { name: 'Hyderabad', count: '400+ PGs' },
+  { name: 'Delhi', count: '600+ PGs' },
+  { name: 'Mumbai', count: '550+ PGs' },
+  { name: 'Chennai', count: '300+ PGs' },
 ];
 
 const features = [
@@ -91,30 +89,22 @@ const features = [
 ];
 
 const Home = () => {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen">
-      <Header />
-
       {/* Hero Section */}
-      <section className="relative bg-gradient-hero py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJhMiAyIDAgMCAxIDIgMnYyYTIgMiAwIDAgMS0yIDJoLTJ2MmEyIDIgMCAwIDEtMiAyaC0yYTIgMiAwIDAgMS0yLTJ2LTJoLTJhMiAyIDAgMCAxLTItMnYtMmEyIDIgMCAwIDEgMi0yaDJ2LTJhMiAyIDAgMCAxIDItMmgyYTIgMiAwIDAgMSAyIDJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
+      <section className="relative bg-gradient-hero py-20 md:py-32">
+        <div className="absolute inset-0 bg-black/10" />
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center text-white">
-            <div className="mb-8 animate-fade-in-up">
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-6">
-                <Sparkles className="h-4 w-4" />
-                Welcome to Book My Sleep
-              </span>
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 animate-fade-in-up" style={{animationDelay: '0.1s'}}>
-              Find Your Perfect PG Accommodation
+          <div className="max-w-4xl mx-auto text-center space-y-8 animate-fade-in-up">
+            <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight">
+              Find Your Perfect PG
+              <br />
+              <span className="text-secondary">Book My Sleep</span>
             </h1>
-            <p className="text-xl mb-10 text-white/90 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-              Discover comfortable and affordable paying guest accommodations in your city
+            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
+              Discover verified PG accommodations across India. Safe, comfortable, and affordable living spaces await you.
             </p>
-            <div className="animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+            <div className="max-w-3xl mx-auto">
               <SearchBar />
             </div>
           </div>
@@ -141,18 +131,19 @@ const Home = () => {
       </section>
 
       {/* Featured Properties */}
-      <section className="py-20">
+      <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-12">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-4xl font-bold mb-2 bg-gradient-primary bg-clip-text text-transparent">
-                Featured Properties
-              </h2>
-              <p className="text-muted-foreground text-lg">Hand-picked properties for you</p>
+              <h2 className="text-3xl font-bold mb-2">Featured Properties</h2>
+              <p className="text-muted-foreground">Handpicked PGs for you</p>
             </div>
-            <Button variant="outline" onClick={() => navigate('/search')} className="rounded-xl">
-              View All <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <Link to="/search">
+              <Button variant="outline">
+                View All
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredProperties.map((property) => (
@@ -163,29 +154,51 @@ const Home = () => {
       </section>
 
       {/* Popular Cities */}
-      <section className="py-20 bg-gradient-to-br from-accent/10 to-secondary/10">
+      <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">Popular Cities</h2>
-            <p className="text-muted-foreground text-lg">Find PG accommodations in top cities</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <h2 className="text-3xl font-bold mb-8 text-center">Popular Cities</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {popularCities.map((city, index) => (
-              <button
-                key={index}
-                onClick={() => navigate(`/search?city=${city.name}`)}
-                className="p-8 rounded-2xl bg-card border border-border hover:border-primary/50 hover:shadow-strong transition-all text-center group hover:-translate-y-2 duration-300"
-              >
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">{city.icon}</div>
-                <h3 className="font-bold mb-2 group-hover:text-primary transition-colors text-lg">{city.name}</h3>
-                <p className="text-sm text-muted-foreground font-medium">{city.properties} PGs</p>
-              </button>
+              <Link key={index} to={`/search?city=${city.name}`}>
+                <Card className="hover:shadow-medium transition-all hover:border-primary group cursor-pointer">
+                  <CardContent className="p-6 text-center">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 text-primary group-hover:scale-110 transition-transform" />
+                    <h3 className="font-semibold mb-1">{city.name}</h3>
+                    <p className="text-sm text-muted-foreground">{city.count}</p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <Footer />
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-primary relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-3xl mx-auto text-center space-y-6 text-white">
+            <h2 className="text-3xl md:text-4xl font-bold">
+              Ready to Find Your Perfect PG?
+            </h2>
+            <p className="text-lg text-white/90">
+              Join thousands of happy tenants who found their ideal accommodation through Book My Sleep
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/search">
+                <Button size="lg" variant="secondary" className="w-full sm:w-auto">
+                  Search Properties
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto bg-white/10 text-white border-white hover:bg-white hover:text-primary">
+                  Sign Up Now
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
