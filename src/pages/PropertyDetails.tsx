@@ -88,10 +88,16 @@ const PropertyDetails = () => {
       return;
     }
 
-    // Mock booking - replace with actual API call
-    toast({
-      title: 'Booking Request Sent!',
-      description: 'Property owner will contact you soon.',
+    const room = mockProperty.rooms.find(r => r.id === selectedRoom);
+    navigate('/checkout', {
+      state: {
+        booking: {
+          propertyName: mockProperty.name,
+          roomType: room?.type + ' Room',
+          price: room?.rent || 0,
+          duration: '1 Month'
+        }
+      }
     });
   };
 
