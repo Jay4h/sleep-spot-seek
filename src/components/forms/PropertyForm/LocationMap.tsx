@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
-import { Box, Input, FormControl, FormLabel, Text, VStack } from '@chakra-ui/react';
-import toast from 'react-hot-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 const mapContainerStyle = {
   width: '100%',
@@ -25,6 +26,7 @@ export default function LocationMap({ onLocationChange, initialLocation }: Locat
   const [marker, setMarker] = useState(initialLocation || defaultCenter);
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [address, setAddress] = useState(initialLocation?.address || '');
+  const { toast } = useToast();
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -71,35 +73,41 @@ export default function LocationMap({ onLocationChange, initialLocation }: Locat
           map.setZoom(15);
         }
 
-        toast.success('Location updated');
+        toast({
+          title: 'Location updated',
+          description: 'Property location has been set',
+        });
       }
     }
   };
 
   if (!apiKey) {
     return (
-      <Box p={8} textAlign="center" bg="red.50" borderRadius="md">
-        <Text color="red.600">Google Maps API key not configured. Please add VITE_GOOGLE_MAPS_API_KEY to your .env file.</Text>
-      </Box>
+      <div className="p-8 text-center bg-destructive/10 rounded-md">
+        <p className="text-destructive">
+          Google Maps API key not configured. Please add VITE_GOOGLE_MAPS_API_KEY to your .env file.
+        </p>
+      </div>
     );
   }
 
   return (
-    <VStack spacing={4} align="stretch">
+    <div className="space-y-4">
       <LoadScript googleMapsApiKey={apiKey} libraries={libraries}>
-        <FormControl>
-          <FormLabel>Search Location</FormLabel>
+        <div>
+          <Label htmlFor="location-search">Search Location</Label>
           <Autocomplete onLoad={setAutocomplete} onPlaceChanged={onPlaceChanged}>
             <Input
+              id="location-search"
               type="text"
               placeholder="Search for a place..."
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
           </Autocomplete>
-        </FormControl>
+        </div>
 
-        <Box borderRadius="md" overflow="hidden" border="1px" borderColor="gray.200">
+        <div className="rounded-md overflow-hidden border">
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={marker}
@@ -110,18 +118,18 @@ export default function LocationMap({ onLocationChange, initialLocation }: Locat
           >
             <Marker position={marker} draggable onDragEnd={onMapClick} />
           </GoogleMap>
-        </Box>
+        </div>
       </LoadScript>
 
-      <Text fontSize="sm" color="gray.600">
+      <p className="text-sm text-muted-foreground">
         Click on the map or search for a location to set your property's coordinates
-      </Text>
+      </p>
 
       {marker && (
-        <Text fontSize="sm" color="gray.600">
+        <p className="text-sm text-muted-foreground">
           Selected: {marker.lat.toFixed(6)}, {marker.lng.toFixed(6)}
-        </Text>
+        </p>
       )}
-    </VStack>
+    </div>
   );
 }

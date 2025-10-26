@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { Box, Checkbox, SimpleGrid, Input, Button, Tag, TagLabel, TagCloseButton, HStack, VStack, Text } from '@chakra-ui/react';
-import { Plus } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Plus, X } from 'lucide-react';
 
 const COMMON_AMENITIES = [
   'WiFi',
@@ -50,54 +54,66 @@ export default function Amenities({ selectedAmenities, onChange }: AmenitiesProp
   const customAmenities = selectedAmenities.filter(a => !COMMON_AMENITIES.includes(a));
 
   return (
-    <VStack spacing={6} align="stretch">
-      <Box>
-        <Text fontSize="lg" fontWeight="semibold" mb={4}>Common Amenities</Text>
-        <SimpleGrid columns={{ base: 2, md: 3 }} spacing={4}>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Common Amenities</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {COMMON_AMENITIES.map(amenity => (
-            <Checkbox
-              key={amenity}
-              isChecked={selectedAmenities.includes(amenity)}
-              onChange={() => toggleAmenity(amenity)}
-            >
-              {amenity}
-            </Checkbox>
+            <div key={amenity} className="flex items-center space-x-2">
+              <Checkbox
+                id={amenity}
+                checked={selectedAmenities.includes(amenity)}
+                onCheckedChange={() => toggleAmenity(amenity)}
+              />
+              <Label htmlFor={amenity} className="cursor-pointer">
+                {amenity}
+              </Label>
+            </div>
           ))}
-        </SimpleGrid>
-      </Box>
+        </div>
+      </div>
 
-      <Box>
-        <Text fontSize="lg" fontWeight="semibold" mb={4}>Add Custom Amenity</Text>
-        <HStack>
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Add Custom Amenity</h3>
+        <div className="flex gap-2">
           <Input
             value={customAmenity}
             onChange={(e) => setCustomAmenity(e.target.value)}
             placeholder="Enter custom amenity"
-            onKeyPress={(e) => e.key === 'Enter' && addCustomAmenity()}
+            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomAmenity())}
           />
-          <Button leftIcon={<Plus size={16} />} onClick={addCustomAmenity} colorScheme="primary">
+          <Button type="button" onClick={addCustomAmenity}>
+            <Plus className="h-4 w-4 mr-2" />
             Add
           </Button>
-        </HStack>
-      </Box>
+        </div>
+      </div>
 
       {customAmenities.length > 0 && (
-        <Box>
-          <Text fontSize="sm" fontWeight="medium" mb={2}>Custom Amenities</Text>
-          <HStack spacing={2} flexWrap="wrap">
+        <div>
+          <Label className="text-sm font-medium mb-2 block">Custom Amenities</Label>
+          <div className="flex flex-wrap gap-2">
             {customAmenities.map(amenity => (
-              <Tag key={amenity} size="md" colorScheme="purple" borderRadius="full">
-                <TagLabel>{amenity}</TagLabel>
-                <TagCloseButton onClick={() => removeCustomAmenity(amenity)} />
-              </Tag>
+              <Badge key={amenity} variant="secondary" className="pr-1">
+                {amenity}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 ml-2"
+                  onClick={() => removeCustomAmenity(amenity)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
             ))}
-          </HStack>
-        </Box>
+          </div>
+        </div>
       )}
 
-      <Text fontSize="sm" color="gray.600">
+      <p className="text-sm text-muted-foreground">
         {selectedAmenities.length} amenities selected
-      </Text>
-    </VStack>
+      </p>
+    </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, Button, Grid, Image, Text, Progress, IconButton, VStack } from '@chakra-ui/react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { X, Upload } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface PhotosUploaderProps {
   maxFiles?: number;
@@ -14,10 +15,15 @@ export default function PhotosUploader({ maxFiles = 12, onFilesChange, existingI
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>(existingImages);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (files.length + acceptedFiles.length > maxFiles) {
-      toast.error(`Maximum ${maxFiles} images allowed`);
+      toast({
+        title: 'Too many files',
+        description: `Maximum ${maxFiles} images allowed`,
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -34,8 +40,11 @@ export default function PhotosUploader({ maxFiles = 12, onFilesChange, existingI
       reader.readAsDataURL(file);
     });
 
-    toast.success(`${acceptedFiles.length} image(s) added`);
-  }, [files, maxFiles, onFilesChange]);
+    toast({
+      title: 'Success',
+      description: `${acceptedFiles.length} image(s) added`,
+    });
+  }, [files, maxFiles, onFilesChange, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -53,58 +62,52 @@ export default function PhotosUploader({ maxFiles = 12, onFilesChange, existingI
   };
 
   return (
-    <VStack spacing={4} align="stretch">
-      <Box
+    <div className="space-y-4">
+      <div
         {...getRootProps()}
-        border="2px dashed"
-        borderColor={isDragActive ? 'primary.500' : 'gray.300'}
-        borderRadius="lg"
-        p={8}
-        textAlign="center"
-        cursor="pointer"
-        transition="all 0.2s"
-        _hover={{ borderColor: 'primary.500', bg: 'gray.50' }}
+        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+          isDragActive ? 'border-primary bg-accent' : 'border-border hover:border-primary hover:bg-accent/50'
+        }`}
       >
         <input {...getInputProps()} />
-        <Upload size={48} style={{ margin: '0 auto', color: '#7c3aed' }} />
-        <Text mt={4} fontWeight="medium">
+        <Upload className="h-12 w-12 mx-auto mb-4 text-primary" />
+        <p className="font-medium">
           {isDragActive ? 'Drop images here' : 'Drag & drop images or click to browse'}
-        </Text>
-        <Text fontSize="sm" color="gray.500" mt={2}>
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
           Maximum {maxFiles} images, up to 5MB each
-        </Text>
-      </Box>
+        </p>
+      </div>
 
       {uploadProgress > 0 && uploadProgress < 100 && (
-        <Box>
-          <Text fontSize="sm" mb={2}>Uploading...</Text>
-          <Progress value={uploadProgress} size="sm" colorScheme="primary" />
-        </Box>
+        <div>
+          <p className="text-sm mb-2">Uploading...</p>
+          <Progress value={uploadProgress} className="h-2" />
+        </div>
       )}
 
       {previews.length > 0 && (
-        <Grid templateColumns="repeat(auto-fill, minmax(150px, 1fr))" gap={4}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {previews.map((preview, index) => (
-            <Box key={index} position="relative" borderRadius="md" overflow="hidden">
-              <Image src={preview} alt={`Preview ${index + 1}`} w="full" h="150px" objectFit="cover" />
-              <IconButton
-                aria-label="Remove image"
-                icon={<X size={16} />}
-                size="sm"
-                colorScheme="red"
-                position="absolute"
-                top={2}
-                right={2}
+            <div key={index} className="relative group rounded-md overflow-hidden border">
+              <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-32 object-cover" />
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => removeFile(index)}
-              />
-            </Box>
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           ))}
-        </Grid>
+        </div>
       )}
 
-      <Text fontSize="sm" color="gray.600">
+      <p className="text-sm text-muted-foreground">
         {files.length} / {maxFiles} images added
-      </Text>
-    </VStack>
+      </p>
+    </div>
   );
 }

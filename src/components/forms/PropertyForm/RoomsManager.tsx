@@ -1,27 +1,14 @@
 import { useState } from 'react';
-import {
-  Box,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  FormControl,
-  FormLabel,
-  Input,
-  Select,
-  SimpleGrid,
-  IconButton,
-  Heading,
-  VStack,
-  HStack,
-  Checkbox,
-  Text,
-  Divider,
-} from '@chakra-ui/react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { RoomFormData } from '@/services/propertyService';
 import PhotosUploader from './PhotosUploader';
-import toast from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface RoomsManagerProps {
   rooms: RoomFormData[];
@@ -43,10 +30,15 @@ export default function RoomsManager({ rooms, onChange }: RoomsManagerProps) {
     images: [],
     amenities: [],
   });
+  const { toast } = useToast();
 
   const addRoom = () => {
     if (!currentRoom.roomNumber || currentRoom.price <= 0) {
-      toast.error('Please fill all required fields');
+      toast({
+        title: 'Missing information',
+        description: 'Please fill all required fields',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -54,10 +46,16 @@ export default function RoomsManager({ rooms, onChange }: RoomsManagerProps) {
       const updatedRooms = [...rooms];
       updatedRooms[editingIndex] = currentRoom;
       onChange(updatedRooms);
-      toast.success('Room updated');
+      toast({
+        title: 'Room updated',
+        description: 'Room details have been updated',
+      });
     } else {
       onChange([...rooms, currentRoom]);
-      toast.success('Room added');
+      toast({
+        title: 'Room added',
+        description: 'New room has been added',
+      });
     }
 
     resetForm();
@@ -65,7 +63,10 @@ export default function RoomsManager({ rooms, onChange }: RoomsManagerProps) {
 
   const deleteRoom = (index: number) => {
     onChange(rooms.filter((_, i) => i !== index));
-    toast.success('Room deleted');
+    toast({
+      title: 'Room deleted',
+      description: 'Room has been removed',
+    });
   };
 
   const editRoom = (index: number) => {
@@ -96,169 +97,186 @@ export default function RoomsManager({ rooms, onChange }: RoomsManagerProps) {
   };
 
   return (
-    <VStack spacing={6} align="stretch">
+    <div className="space-y-6">
       {/* Room Form */}
       <Card>
         <CardHeader>
-          <Heading size="md">{editingIndex !== null ? 'Edit Room' : 'Add Room'}</Heading>
+          <CardTitle>{editingIndex !== null ? 'Edit Room' : 'Add Room'}</CardTitle>
         </CardHeader>
-        <CardBody>
-          <VStack spacing={4}>
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} w="full">
-              <FormControl isRequired>
-                <FormLabel>Room Number</FormLabel>
-                <Input
-                  value={currentRoom.roomNumber}
-                  onChange={(e) => setCurrentRoom({ ...currentRoom, roomNumber: e.target.value })}
-                  placeholder="e.g., A101"
-                />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel>Room Type</FormLabel>
-                <Select
-                  value={currentRoom.roomType}
-                  onChange={(e) => setCurrentRoom({ ...currentRoom, roomType: e.target.value as any })}
-                >
-                  <option value="Single">Single</option>
-                  <option value="Double">Double</option>
-                  <option value="Triple">Triple</option>
-                  <option value="Dormitory">Dormitory</option>
-                </Select>
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel>Monthly Rent (₹)</FormLabel>
-                <Input
-                  type="number"
-                  value={currentRoom.price}
-                  onChange={(e) => setCurrentRoom({ ...currentRoom, price: Number(e.target.value) })}
-                />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel>Security Deposit (₹)</FormLabel>
-                <Input
-                  type="number"
-                  value={currentRoom.securityDeposit}
-                  onChange={(e) => setCurrentRoom({ ...currentRoom, securityDeposit: Number(e.target.value) })}
-                />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel>Capacity</FormLabel>
-                <Input
-                  type="number"
-                  value={currentRoom.capacity}
-                  onChange={(e) => setCurrentRoom({ ...currentRoom, capacity: Number(e.target.value) })}
-                  min={1}
-                />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel>Available From</FormLabel>
-                <Input
-                  type="date"
-                  value={currentRoom.availableFrom}
-                  onChange={(e) => setCurrentRoom({ ...currentRoom, availableFrom: e.target.value })}
-                />
-              </FormControl>
-            </SimpleGrid>
-
-            <FormControl>
-              <Checkbox
-                isChecked={currentRoom.isAvailable}
-                onChange={(e) => setCurrentRoom({ ...currentRoom, isAvailable: e.target.checked })}
-              >
-                Currently Available
-              </Checkbox>
-            </FormControl>
-
-            <Box w="full">
-              <FormLabel>Room Amenities</FormLabel>
-              <SimpleGrid columns={{ base: 2, md: 3 }} spacing={3}>
-                {ROOM_AMENITIES.map(amenity => (
-                  <Checkbox
-                    key={amenity}
-                    isChecked={currentRoom.amenities.includes(amenity)}
-                    onChange={() => toggleAmenity(amenity)}
-                  >
-                    {amenity}
-                  </Checkbox>
-                ))}
-              </SimpleGrid>
-            </Box>
-
-            <Box w="full">
-              <FormLabel>Room Photos</FormLabel>
-              <PhotosUploader
-                maxFiles={6}
-                onFilesChange={(files) => {
-                  // In real app, upload files and get URLs
-                  console.log('Room images:', files);
-                }}
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="roomNumber">Room Number *</Label>
+              <Input
+                id="roomNumber"
+                value={currentRoom.roomNumber}
+                onChange={(e) => setCurrentRoom({ ...currentRoom, roomNumber: e.target.value })}
+                placeholder="e.g., A101"
               />
-            </Box>
+            </div>
 
-            <HStack w="full" justify="flex-end">
-              {editingIndex !== null && (
-                <Button variant="ghost" onClick={resetForm}>
-                  Cancel
-                </Button>
-              )}
-              <Button leftIcon={<Plus size={16} />} colorScheme="primary" onClick={addRoom}>
-                {editingIndex !== null ? 'Update Room' : 'Add Room'}
+            <div>
+              <Label htmlFor="roomType">Room Type *</Label>
+              <select
+                id="roomType"
+                value={currentRoom.roomType}
+                onChange={(e) => setCurrentRoom({ ...currentRoom, roomType: e.target.value as any })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="Single">Single</option>
+                <option value="Double">Double</option>
+                <option value="Triple">Triple</option>
+                <option value="Dormitory">Dormitory</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="price">Monthly Rent (₹) *</Label>
+              <Input
+                id="price"
+                type="number"
+                value={currentRoom.price}
+                onChange={(e) => setCurrentRoom({ ...currentRoom, price: Number(e.target.value) })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="securityDeposit">Security Deposit (₹) *</Label>
+              <Input
+                id="securityDeposit"
+                type="number"
+                value={currentRoom.securityDeposit}
+                onChange={(e) => setCurrentRoom({ ...currentRoom, securityDeposit: Number(e.target.value) })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="capacity">Capacity *</Label>
+              <Input
+                id="capacity"
+                type="number"
+                value={currentRoom.capacity}
+                onChange={(e) => setCurrentRoom({ ...currentRoom, capacity: Number(e.target.value) })}
+                min={1}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="availableFrom">Available From *</Label>
+              <Input
+                id="availableFrom"
+                type="date"
+                value={currentRoom.availableFrom}
+                onChange={(e) => setCurrentRoom({ ...currentRoom, availableFrom: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isAvailable"
+              checked={currentRoom.isAvailable}
+              onCheckedChange={(checked) => setCurrentRoom({ ...currentRoom, isAvailable: checked as boolean })}
+            />
+            <Label htmlFor="isAvailable">Currently Available</Label>
+          </div>
+
+          <div>
+            <Label>Room Amenities</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+              {ROOM_AMENITIES.map(amenity => (
+                <div key={amenity} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`amenity-${amenity}`}
+                    checked={currentRoom.amenities.includes(amenity)}
+                    onCheckedChange={() => toggleAmenity(amenity)}
+                  />
+                  <Label htmlFor={`amenity-${amenity}`} className="cursor-pointer">
+                    {amenity}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label>Room Photos</Label>
+            <PhotosUploader
+              maxFiles={6}
+              onFilesChange={(files) => {
+                console.log('Room images:', files);
+              }}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            {editingIndex !== null && (
+              <Button type="button" variant="outline" onClick={resetForm}>
+                Cancel
               </Button>
-            </HStack>
-          </VStack>
-        </CardBody>
+            )}
+            <Button type="button" onClick={addRoom}>
+              <Plus className="h-4 w-4 mr-2" />
+              {editingIndex !== null ? 'Update Room' : 'Add Room'}
+            </Button>
+          </div>
+        </CardContent>
       </Card>
 
-      <Divider />
+      <Separator />
 
       {/* Rooms List */}
-      <Box>
-        <Heading size="md" mb={4}>Added Rooms ({rooms.length})</Heading>
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Added Rooms ({rooms.length})</h3>
         {rooms.length === 0 ? (
-          <Text color="gray.500" textAlign="center" py={8}>No rooms added yet. Add at least one room to continue.</Text>
+          <p className="text-muted-foreground text-center py-8">
+            No rooms added yet. Add at least one room to continue.
+          </p>
         ) : (
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {rooms.map((room, index) => (
               <Card key={index}>
-                <CardBody>
-                  <HStack justify="space-between" mb={3}>
-                    <Heading size="sm">{room.roomType} Room - {room.roomNumber}</Heading>
-                    <HStack>
-                      <IconButton
-                        aria-label="Edit room"
-                        icon={<Edit2 size={16} />}
-                        size="sm"
+                <CardContent className="pt-6">
+                  <div className="flex justify-between items-start mb-3">
+                    <h4 className="font-semibold">
+                      {room.roomType} Room - {room.roomNumber}
+                    </h4>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => editRoom(index)}
-                      />
-                      <IconButton
-                        aria-label="Delete room"
-                        icon={<Trash2 size={16} />}
-                        size="sm"
-                        colorScheme="red"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => deleteRoom(index)}
-                      />
-                    </HStack>
-                  </HStack>
-                  <VStack align="start" spacing={2}>
-                    <Text fontSize="sm"><strong>Rent:</strong> ₹{room.price}/month</Text>
-                    <Text fontSize="sm"><strong>Deposit:</strong> ₹{room.securityDeposit}</Text>
-                    <Text fontSize="sm"><strong>Capacity:</strong> {room.capacity} person(s)</Text>
-                    <Text fontSize="sm"><strong>Available:</strong> {room.isAvailable ? 'Yes' : 'No'}</Text>
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Rent:</strong> ₹{room.price}/month</p>
+                    <p><strong>Deposit:</strong> ₹{room.securityDeposit}</p>
+                    <p><strong>Capacity:</strong> {room.capacity} person(s)</p>
+                    <p><strong>Available:</strong> {room.isAvailable ? 'Yes' : 'No'}</p>
                     {room.amenities.length > 0 && (
-                      <Text fontSize="sm"><strong>Amenities:</strong> {room.amenities.join(', ')}</Text>
+                      <p><strong>Amenities:</strong> {room.amenities.join(', ')}</p>
                     )}
-                  </VStack>
-                </CardBody>
+                  </div>
+                </CardContent>
               </Card>
             ))}
-          </SimpleGrid>
+          </div>
         )}
-      </Box>
-    </VStack>
+      </div>
+    </div>
   );
 }
