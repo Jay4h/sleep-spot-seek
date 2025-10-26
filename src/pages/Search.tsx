@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, Grid, List } from 'lucide-react';
+import { Filter, Grid, List, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Slider } from '@/components/ui/slider';
 import PropertyCard from '@/components/common/PropertyCard';
 import { Property } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock data
 const mockProperties: Property[] = Array.from({ length: 12 }, (_, i) => ({
@@ -32,7 +33,9 @@ const mockProperties: Property[] = Array.from({ length: 12 }, (_, i) => ({
 const Search = () => {
   const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [properties, setProperties] = useState<Property[]>(mockProperties);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
   const [filters, setFilters] = useState({
     city: searchParams.get('city') || '',
     minRent: 0,
@@ -41,9 +44,59 @@ const Search = () => {
     sortBy: 'newest',
   });
 
+  // Fetch properties from backend
+  const fetchProperties = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('http://localhost:4000/api/properties');
+      const data = await response.json();
+      
+      if (data.success) {
+        // Transform backend data to match frontend Property interface
+        const transformedProperties: Property[] = data.data.properties.map((prop: any) => ({
+          id: prop._id,
+          ownerId: prop.ownerId,
+          name: prop.propertyName,
+          description: prop.description,
+          address: prop.address.street,
+          city: prop.address.city,
+          state: prop.address.state,
+          pincode: prop.address.zipCode,
+          images: prop.images || ['/placeholder.svg'],
+          amenities: prop.amenities || [],
+          rules: prop.rules || [],
+          verified: prop.verificationStatus === 'verified',
+          rating: prop.rating || 0,
+          reviewCount: prop.reviewCount || 0,
+          createdAt: prop.createdAt,
+        }));
+        setProperties(transformedProperties);
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch properties',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch properties',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Mock filter application - replace with actual API call
-    let filtered = [...mockProperties];
+    fetchProperties();
+  }, []);
+
+  // Apply filters to properties
+  useEffect(() => {
+    let filtered = [...properties];
     
     if (filters.city) {
       filtered = filtered.filter(p => 
@@ -53,9 +106,11 @@ const Search = () => {
 
     // Sort
     if (filters.sortBy === 'price-low') {
-      filtered.sort((a, b) => 5000 - 6000); // Mock
+      filtered.sort((a, b) => 5000 - 6000); // Mock sorting
     } else if (filters.sortBy === 'rating') {
       filtered.sort((a, b) => b.rating - a.rating);
+    } else if (filters.sortBy === 'newest') {
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     setProperties(filtered);
@@ -193,17 +248,24 @@ const Search = () => {
 
           {/* Results */}
           <div className="flex-1">
-            <div className={`grid gap-6 ${
-              viewMode === 'grid' 
-                ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
-                : 'grid-cols-1'
-            }`}>
-              {properties.map((property) => (
-                <PropertyCard key={property.id} property={property} />
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Loading properties...</span>
+              </div>
+            ) : (
+              <div className={`grid gap-6 ${
+                viewMode === 'grid' 
+                  ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+                  : 'grid-cols-1'
+              }`}>
+                {properties.map((property) => (
+                  <PropertyCard key={property.id} property={property} />
+                ))}
+              </div>
+            )}
 
-            {properties.length === 0 && (
+            {!isLoading && properties.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-lg text-muted-foreground">No properties found matching your criteria</p>
                 <Button 

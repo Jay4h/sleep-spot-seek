@@ -1,14 +1,75 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Star, Users, IndianRupee } from 'lucide-react';
+import { MapPin, Star, Users, IndianRupee, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Property } from '@/types';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuthStore } from '@/store/authStore';
 
 interface PropertyCardProps {
   property: Property;
 }
 
 const PropertyCard = ({ property }: PropertyCardProps) => {
+  const [isBooking, setIsBooking] = useState(false);
+  const { toast } = useToast();
+  const { user, isAuthenticated } = useAuthStore();
+
+  const handleBookNow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      toast({
+        title: 'Login Required',
+        description: 'Please login to book a property',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsBooking(true);
+    try {
+      // Create booking request
+      const response = await fetch('http://localhost:4000/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          propertyId: property.id,
+          seekerId: user?.id,
+          message: `I'm interested in booking this property. Please contact me for more details.`,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: 'Booking Request Sent!',
+          description: 'The property owner will be notified and contact you soon.',
+        });
+      } else {
+        toast({
+          title: 'Booking Failed',
+          description: data.error || 'Something went wrong. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      toast({
+        title: 'Booking Failed',
+        description: 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBooking(false);
+    }
+  };
   return (
     <Link to={`/property/${property.id}`}>
       <Card className="overflow-hidden hover:shadow-medium transition-all duration-300 hover:-translate-y-1 group">
@@ -51,6 +112,18 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
               <IndianRupee className="h-4 w-4" />
               <span>From 5,000/mo</span>
             </div>
+          </div>
+          
+          <div className="mt-3">
+            <Button 
+              className="w-full" 
+              size="sm"
+              onClick={handleBookNow}
+              disabled={isBooking}
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              {isBooking ? 'Sending...' : 'Book Now'}
+            </Button>
           </div>
         </CardContent>
       </Card>

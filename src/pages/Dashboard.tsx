@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import SeekerDashboard from './dashboard/SeekerDashboard';
 import OwnerDashboard from './dashboard/OwnerDashboard';
+import PGOwnerDashboard from './dashboard/PGOwnerDashboard';
 
 const Dashboard = () => {
   const { user, isAuthenticated } = useAuthStore();
@@ -21,7 +22,7 @@ const Dashboard = () => {
   // Route to appropriate dashboard based on user role
   switch (user.role) {
     case 'owner':
-      return <OwnerDashboard />;
+      return <PGOwnerDashboard />;
     case 'seeker':
       return <SeekerDashboard />;
     case 'admin':

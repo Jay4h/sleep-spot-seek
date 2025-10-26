@@ -198,11 +198,31 @@ const Register = () => {
               </Button>
             </form>
 
-            <div className="mt-6 text-center text-sm">
-              Already have an account?{' '}
-              <Link to="/login" className="text-primary hover:underline font-medium">
-                Sign in
-              </Link>
+            <div className="mt-6 space-y-3">
+              <div className="text-center text-sm">
+                Already have an account?{' '}
+                <Link to="/login" className="text-primary hover:underline font-medium">
+                  Sign in
+                </Link>
+              </div>
+              <div className="text-center">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Link 
+                    to="/register/pg-owner" 
+                    className="text-sm text-primary hover:underline font-medium"
+                  >
+                    Register as PG Owner
+                  </Link>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

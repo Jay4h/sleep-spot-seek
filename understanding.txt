@@ -1,0 +1,725 @@
+Great — below is a **single, copy-paste-ready, production-level full-stack prompt** you can give to an AI engineer, Codex, or use as a spec for developers to implement the entire **BOOK MY SLEEP** product (frontend + backend + DB + infra + workflows). It covers:
+
+* frontend scaffold & behavior (already done earlier)
+* backend architecture, endpoints, controllers, services, webhooks, Stripe flows
+* full database schema and indexes (MongoDB)
+* security, validation, testing, CI/CD, deployment, monitoring
+* environment variables, API contracts (examples), and developer run scripts
+* booking lifecycle & socket workflows (sequence flows)
+* acceptance criteria and test checklist
+
+You can paste this whole thing into an AI generation tool or hand it to devs as a single specification.
+
+---
+
+# FULL-STACK PROMPT — BOOK MY SLEEP (production-level)
+
+> **Goal:** Build a production-grade full stack application called **BOOK MY SLEEP** — a PG (Paying Guest) accommodation booking platform that supports: role-based flows (seeker, owner, admin), Stripe Connect for owner payouts, booking lifecycle, real-time notifications & chat, image uploads, property verification, analytics, and an admin panel. Use the frontend scaffold previously provided.
+
+---
+
+## HIGH-LEVEL ARCHITECTURE & TECH STACK
+
+**Frontend**
+
+* React 18 + TypeScript
+* React Router v6
+* Chakra UI (or MUI) + Framer Motion
+* React Query (TanStack) for server state
+* Zustand (or Redux Toolkit) for auth/global state
+* React Hook Form + Yup for forms
+* Socket.io-client for realtime
+* Leaflet or Mapbox for maps
+* Stripe.js / @stripe/react-stripe-js for payments / Connect
+* axios for HTTP
+
+**Backend**
+
+* Node.js (v18+) + TypeScript
+* Express.js or Fastify (Express preferred for familiarity)
+* MongoDB (Atlas) + Mongoose
+* Redis (caching, rate-limit, session optional)
+* Socket.io (server)
+* Stripe (Connect + Payment Intents + webhooks)
+* Cloudinary or AWS S3 for images
+* SendGrid/Nodemailer for email
+* JWT + Refresh tokens (auth)
+* Helmet, CORS, rate-limiter for security
+* Jest + Supertest for tests
+
+**Infrastructure**
+
+* GitHub Actions (CI)
+* Docker + Docker Compose for local dev
+* Deploy: Vercel (frontend) + Render / Railway / DigitalOcean / AWS ECS (backend) + MongoDB Atlas
+* Sentry for error tracking
+* Prometheus + Grafana or use Hosted monitoring (Datadog)
+* Log aggregation: Papertrail/LogDNA or Cloud provider logs
+
+---
+
+## REPO LAYOUT (suggested)
+
+### frontend/
+
+```
+book-my-sleep-frontend/
+├── public/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   ├── pages/
+│   ├── hooks/
+│   ├── services/        // axios instances, api clients
+│   ├── store/
+│   └── App.tsx
+├── package.json
+├── tsconfig.json
+└── start-dev.bat
+```
+
+### backend/
+
+```
+book-my-sleep-backend/
+├── src/
+│   ├── controllers/
+│   ├── services/
+│   ├── models/
+│   ├── routes/
+│   ├── middlewares/
+│   ├── jobs/            // cron & background jobs
+│   ├── sockets/
+│   └── utils/
+├── tests/
+├── tsconfig.json
+├── package.json
+└── docker-compose.yml
+```
+
+---
+
+## DATABASE DESIGN — MongoDB (detailed collections)
+
+**General rules**
+
+* Use `ObjectId` refs; store small denormalized fields for performance (e.g., ownerName in Property snapshot).
+* Add timestamps `{ timestamps: true }` in schemas.
+* Add compound indexes for common queries.
+
+### 1. users
+
+```js
+{
+  _id: ObjectId,
+  firstName: String,
+  lastName: String,
+  email: String, // unique, indexed
+  password: String, // bcrypt hashed
+  phoneNumber: String,
+  role: String, // 'seeker' | 'owner' | 'admin'
+  profilePicture: String, // URL
+  dateOfBirth: Date,
+  address: {
+    street: String, city: String, state: String, country: String, zipCode: String, coordinates: { lat: Number, lng: Number }
+  },
+  isVerified: Boolean,
+  stripeAccountId: String, // stripe account connected
+  stripeConnected: Boolean,
+  createdAt, updatedAt
+}
+```
+
+**Indexes**
+
+* `email: 1 (unique)`, `role: 1`, `stripeConnected: 1`
+
+### 2. properties
+
+```js
+{
+  _id,
+  ownerId: ObjectId -> users._id,
+  propertyName: String,
+  description: String,
+  address: { street, city, state, country, zipCode, coordinates: { lat, lng } },
+  propertyType: String, // 'PG', 'Hostel', 'Flat'
+  amenities: [String],
+  images: [String],
+  rules: [String],
+  isActive: Boolean,
+  verificationStatus: String, // 'pending'|'verified'|'rejected'
+  rating: Number, // average
+  reviewCount: Number,
+  createdAt, updatedAt
+}
+```
+
+**Indexes**
+
+* `ownerId: 1`, `verificationStatus:1`, `address.city:1`, `address.coordinates: "2dsphere"` for geo queries
+
+### 3. rooms
+
+```js
+{
+  _id,
+  propertyId: ObjectId,
+  roomNumber: String,
+  roomType: String, // 'Single' 'Double' 'Triple'
+  price: Number,
+  securityDeposit: Number,
+  capacity: Number,
+  currentOccupancy: Number,
+  amenities: [String],
+  images: [String],
+  isAvailable: Boolean,
+  availableFrom: Date,
+  createdAt, updatedAt
+}
+```
+
+**Indexes**
+
+* `propertyId:1`, `isAvailable:1`, `price:1`
+
+### 4. bookings
+
+```js
+{
+  _id,
+  seekerId: ObjectId,
+  ownerId: ObjectId,
+  propertyId: ObjectId,
+  roomId: ObjectId,
+  checkInDate: Date,
+  checkOutDate: Date,
+  totalAmount: Number,
+  securityDeposit: Number,
+  platformCommission: Number,
+  bookingStatus: String, // 'pending'|'confirmed'|'rejected'|'cancelled'|'completed'
+  paymentStatus: String, // 'pending'|'paid'|'refunded'
+  paymentIntentId: String, // stripe payment intent
+  paymentMethod: String,
+  specialRequests: String,
+  createdAt, updatedAt
+}
+```
+
+**Indexes**
+
+* `seekerId:1, ownerId:1, propertyId:1, bookingStatus:1, createdAt: -1`
+* Compound index for availability queries: `{roomId:1, checkInDate:1, checkOutDate:1}`
+
+### 5. reviews
+
+```js
+{
+  _id,
+  seekerId,
+  ownerId,
+  propertyId,
+  bookingId,
+  rating: Number, // 1-5
+  review: String,
+  createdAt, updatedAt
+}
+```
+
+**Indexes**
+
+* `{ propertyId:1, rating:-1 }`
+
+### 6. messages (chat)
+
+```js
+{
+  _id,
+  conversationId: ObjectId, // optional group or property-specific
+  fromUser: ObjectId,
+  toUser: ObjectId,
+  propertyId: ObjectId, // optional
+  text: String,
+  read: Boolean,
+  metadata: { deliveredAt, seenAt },
+  createdAt
+}
+```
+
+**Indexes**
+
+* `conversationId:1, toUser:1, createdAt:1`
+
+### 7. payouts (platform view)
+
+```js
+{
+  _id,
+  ownerId,
+  stripePayoutId,
+  amount,
+  currency,
+  status, // 'paid' | 'pending' | 'failed'
+  details: Object,
+  createdAt, updatedAt
+}
+```
+
+---
+
+## API SPECIFICATION — Endpoints, Contracts, Controllers
+
+(Use REST JSON; return consistent envelope `{ success: boolean, data?, error? }`)
+
+### Auth
+
+```
+POST /api/auth/register
+  body: { firstName, lastName, email, password, role, phoneNumber }
+  returns: 201 { user, accessToken, refreshToken }
+
+POST /api/auth/login
+  body: { email, password }
+  returns: 200 { user, accessToken, refreshToken }
+
+POST /api/auth/refresh
+  body: { refreshToken }
+  returns: 200 { accessToken }
+
+POST /api/auth/logout
+  body: { refreshToken } // blacklist
+
+POST /api/auth/verify-email/:token
+GET /api/auth/me
+```
+
+### Users
+
+```
+GET /api/users/:id
+PUT /api/users/:id
+POST /api/users/:id/avatar  // multipart -> Cloudinary/S3
+PUT /api/users/:id/stripe   // updates stripeConnected flag after callback verification
+```
+
+### Properties
+
+```
+GET /api/properties?city=&amenities=&priceMin=&priceMax=&lat=&lng=&radius=
+POST /api/properties        // owner-only
+GET /api/properties/:id
+PUT /api/properties/:id     // owner-only
+DELETE /api/properties/:id  // owner-only
+POST /api/properties/:id/images
+GET /api/properties/owner/:ownerId
+GET /api/properties/search
+```
+
+### Rooms
+
+```
+POST /api/rooms
+GET /api/rooms/:id
+PUT /api/rooms/:id
+DELETE /api/rooms/:id
+GET /api/rooms/property/:propertyId
+GET /api/rooms/:id/availability?from=&to=
+```
+
+### Bookings
+
+```
+POST /api/bookings
+  body: { seekerId, propertyId, roomId, checkInDate, checkOutDate, totalAmount, paymentMethod, specialRequests }
+
+GET /api/bookings/:id
+GET /api/bookings/user/:userId
+GET /api/bookings/property/:propertyId
+PUT /api/bookings/:id (owner: confirm/reject) -> body {status}
+POST /api/bookings/:id/cancel
+```
+
+### Payments
+
+```
+POST /api/payments/create-intent
+  body: { bookingId, amount, currency }
+  returns: { clientSecret }
+
+POST /api/payments/confirm (webhook handles too)
+POST /api/payments/refund
+
+GET /api/payments/connect-link         // returns stripe onboarding url for owner
+GET /api/payments/payouts?ownerId=
+POST /api/payments/webhook             // Stripe webhook endpoint
+```
+
+### Reviews
+
+```
+POST /api/reviews
+GET /api/reviews/property/:propertyId
+GET /api/reviews/:id
+PUT /api/reviews/:id
+DELETE /api/reviews/:id
+```
+
+### Admin
+
+```
+GET /api/admin/users
+PUT /api/admin/properties/:id/verify   // approve/reject property
+GET /api/admin/analytics
+```
+
+---
+
+## BACKEND DETAIL: Controllers & Services
+
+* **AuthController**: register, login, refresh, logout, verify-email
+
+  * Validate input via `express-validator` or `zod`
+  * Hash passwords with bcrypt (salt rounds >= 12)
+  * Create both access token (short) and refresh token (longer) with rotation
+
+* **UserController**: profile CRUD, avatar upload -> Cloudinary/S3 (signed URLs)
+
+  * On avatar upload: validate file type & size, scan for malware optional, then upload
+
+* **PropertyController**: create/update property, indexing coordinates for geo queries
+
+  * On create: set `verificationStatus: 'pending'` and notify admin
+
+* **RoomController**: room CRUD, availability query
+
+  * Provide helper to compute occupancy and availableFrom dates
+
+* **BookingController**: create booking, check availability conflict
+
+  * Check room availability with date overlap logic (use server-side transactions where possible)
+  * On booking create:
+
+    1. Create booking with `status: 'pending'` and `paymentStatus: 'pending'`
+    2. Create Stripe PaymentIntent with `application_fee_amount` (platform commission) and `transfer_data[destination]` if owner connected (Stripe Connect)
+    3. Return `clientSecret` to frontend
+  * After payment success (webhook), update `paymentStatus: 'paid'` and `bookingStatus: 'confirmed'` (or keep pending until owner accepts if required)
+  * Create notification and socket event `booking-request` to owner
+
+* **PaymentService**:
+
+  * createPaymentIntent(booking, amount)
+  * stripeConnectLink(ownerId) -> returns onboarding URL
+  * handleWebhook -> handle `payment_intent.succeeded`, `charge.refunded`, `payout.paid`
+  * For Connect: create accounts in `express` mode or `standard` accounts as required
+
+* **MessageController & Socket**:
+
+  * REST endpoints to fetch conversation history
+  * Socket.io server with namespaces `"/chat"`; events: `join`, `leave`, `send-message`, `typing`
+  * On `send-message`: persist message in DB and emit `new-message` to recipient
+
+* **AdminController**:
+
+  * Approve/reject property (verify ownership and documents)
+  * Expose analytics: daily active users, bookings, revenue, commission
+
+* **WebhookController**:
+
+  * Accept Stripe webhooks; validate signature (use STRIPE_WEBHOOK_SECRET)
+  * Update payout records, mark owner as `stripeConnected` on account.updated events
+
+---
+
+## PAYMENT & STRIPE CONNECT FLOW (sequence)
+
+1. Owner clicks `Connect with Stripe` -> frontend calls `GET /api/payments/connect-link`.
+2. Backend calls `stripe.accounts.create` or `stripe.oauth.authorize` depending on model and returns onboarding link.
+3. Owner completes onboarding on Stripe, Stripe redirects to backend endpoint with code -> backend exchanges code and stores `stripeAccountId` and `stripeConnected=true` on user.
+4. Seeker makes booking & payment:
+
+   * Backend creates PaymentIntent with `transfer_data[destination]=owner.stripeAccountId` and `application_fee_amount` = platform fee.
+   * Frontend collects card via Stripe Elements and confirms payment with `clientSecret`.
+5. Stripe triggers `payment_intent.succeeded` webhook -> backend marks booking paymentStatus=paid and triggers booking workflow (notify owner).
+6. Payouts are handled by Stripe Connect automatically and `payout.paid` webhook is used to create payout records.
+
+**Notes**
+
+* If owner not connected, platform collects payment and holds until owner connects; alternatively enforce owner connection before allowing bookings on their PGs.
+* For compliance, collect owner KYC info as required by Stripe.
+
+---
+
+## REAL-TIME WORKFLOWS (Socket.io)
+
+**Namespaces/Rooms**
+
+* Use per-property-room: `room:property:<propertyId>` or per-conversation `conversation:<id>`
+* On booking creation:
+
+  * emit `booking-request` to `owner:<ownerId>` socket
+  * store notification in DB notification collection
+* On booking status change:
+
+  * emit `booking-update` to seeker
+* On messaging:
+
+  * emit `new-message` to recipient
+  * keep unread counts in DB; update read receipts on open
+
+**Client-side**
+
+* `useSocket()` hook for connecting after auth and re-connecting on token refresh
+* Subscribe to events and dispatch to store (Zustand/Redux)
+* Use toasts for short notifications; persistent notifications appear in a notifications center
+
+---
+
+## SECURITY & COMPLIANCE
+
+* Use HTTPS only in production (enforce redirect).
+* Implement rate limiting (e.g., 200 req/min) per IP with Redis store.
+* Helmet for headers, sanitize inputs to prevent XSS/NoSQL injection.
+* Validate request bodies with `zod` or `Joi`.
+* Store secrets in environment variables; never commit `.env`.
+* Password hashing: bcrypt (salt rounds >=12).
+* Implement CSRF protection for cookie-based flows or use tokens (Authorization: Bearer).
+* Use secure cookie options for refresh tokens: `httpOnly`, `secure`, `sameSite=Strict`.
+* PCI: Never store raw card numbers; use Stripe properly so sensitive data is handled by Stripe.
+
+---
+
+## INDEXING & PERFORMANCE
+
+* Index: email unique, properties coordinates as `2dsphere`, bookings compound index for owner/status dates.
+* Use Redis caching for frequently-read analytics and property listings (cache invalidation on updates).
+* Use pagination and limit results for lists.
+* Use MongoDB aggregation for analytics queries.
+
+---
+
+## TESTING & QUALITY
+
+* **Unit tests**: Jest for services & utils.
+* **Integration**: Supertest for API routes (mock Stripe webhooks where necessary with fixtures).
+* **E2E**: Cypress for critical flows: signup/login, create property, owner connect stripe (mock), seeker booking flow (mock payments), chat.
+* **Test coverage**: Target ≥ 80% for backend services logic.
+* Provide mock data seeds in `/scripts/seed.ts` for local dev.
+
+---
+
+## CI / CD
+
+* GitHub Actions pipeline:
+
+  * `lint` (ESLint + Prettier)
+  * `test:unit`
+  * `build` and `image build` (for backend)
+  * On `main` -> run integration tests + deploy to staging then manual approval to prod.
+* Deploy frontend to Vercel/Netlify (auto-deploy from a branch)
+* Deploy backend to Render/Railway/DigitalOcean/Cloud Run using Docker image
+* Configure secrets via platform secrets manager (Stripe keys, DB URI)
+
+---
+
+## MONITORING & OBSERVABILITY
+
+* Errors: Sentry integration for backend & frontend
+* Logs: structured logs (JSON) to Log aggregation
+* Metrics: basic Prometheus metrics for HTTP latency, error rates, socket connection counts
+* Alerts: set thresholds for error rate, CPU, memory, DB connections
+
+---
+
+## ENVIRONMENT VARIABLES (examples)
+
+**Backend `.env`**
+
+```
+PORT=4000
+NODE_ENV=production
+MONGODB_URI=mongodb+srv://<user>:<pass>@cluster0.mongodb.net/book-my-sleep
+REDIS_URL=redis://:pass@host:6379
+JWT_SECRET=your_jwt_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+CLOUDINARY_URL=cloudinary://<key>:<secret>@<cloud_name>
+SENDGRID_API_KEY=SG.xxxxx
+FRONTEND_URL=https://app.bookmysleep.com
+ADMIN_EMAIL=admin@bookmysleep.com
+```
+
+**Frontend `.env`**
+
+```
+REACT_APP_API_URL=https://api.bookmysleep.com
+REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+```
+
+---
+
+## API CONTRACT EXAMPLES
+
+### Create Booking -> Create PaymentIntent
+
+**POST /api/bookings**
+Request:
+
+```json
+{
+  "seekerId":"64b0d7f6...",
+  "propertyId":"64b0e2...",
+  "roomId":"64b0e3...",
+  "checkInDate":"2026-01-12",
+  "checkOutDate":"2026-02-12",
+  "totalAmount":15000,
+  "specialRequests":"Near window"
+}
+```
+
+Response (200):
+
+```json
+{
+  "success": true,
+  "data": {
+    "bookingId": "64bb...",
+    "clientSecret": "pi_..._secret_..."
+  }
+}
+```
+
+### Stripe webhook `payment_intent.succeeded` handling
+
+* Verify signature
+* Find booking by `paymentIntentId`
+* Update `paymentStatus: 'paid'`, `bookingStatus: 'confirmed'`
+* Emit socket event `booking-confirmed` to owner & seeker
+* Create transaction record in payouts/transactions collection
+* If applicable, schedule payout reconciliation job
+
+---
+
+## BACKGROUND JOBS & SCHEDULED TASKS
+
+* Daily reconciliation job:
+
+  * Match Stripe payouts with local payout records; update statuses
+* Booking reminders:
+
+  * Send email / push 48 hours before check-in
+* Auto-cancel pending bookings after N hours if payment not made (if you support unpaid pending)
+* Archive old bookings and reviews monthly to reduce DB size (or move to cold storage)
+
+---
+
+## DEPLOYMENT CHECKLIST (pre-production)
+
+* [ ] Environment variables set in target env
+* [ ] Stripe webhook configured to production endpoint and secret stored
+* [ ] Cloudinary/S3 production bucket set
+* [ ] MongoDB Atlas cluster whitelisting and SRV string
+* [ ] SSL/TLS certificates for API and frontend domains
+* [ ] Error monitoring (Sentry) DSN configured
+* [ ] Backup plan for MongoDB (daily backups)
+* [ ] Load testing on API (500-2000 concurrent simulated users)
+* [ ] Rate limiting and WAF rules set
+
+---
+
+## ACCEPTANCE CRITERIA & QA CHECKLIST
+
+**User Signup & Role**
+
+* [ ] User can register with role `owner` or `seeker`.
+* [ ] Email verification flow works (link expires).
+* [ ] Login issues (rate limit) handled.
+
+**Owner Flow**
+
+* [ ] Owner can add property and rooms.
+* [ ] Owner sees `verificationStatus: pending`.
+* [ ] Owner can start Stripe Connect and `stripeConnected` toggles true after completion.
+* [ ] Owner sees revenue & payout history (mocked/pulled).
+
+**Seeker Flow**
+
+* [ ] Search & filtering by city, price, amenities works.
+* [ ] Booking flow: availability check -> payment -> booking created.
+* [ ] After successful payment, owner receives socket notification & message.
+
+**Payments**
+
+* [ ] PaymentIntent created and returned `clientSecret`.
+* [ ] Webhook updates booking payment status.
+* [ ] Platform fee applied properly.
+
+**Chat**
+
+* [ ] Seeker can message owner; messages persist.
+* [ ] Real-time message arrives via socket.
+
+**Admin**
+
+* [ ] Admin can approve/reject property; owner notified.
+
+**Security**
+
+* [ ] Sensitive routes protected by JWT & role check.
+* [ ] File uploads validated; no arbitrary file types allowed.
+
+---
+
+## DELIVERABLES FOR AI/DEVS (Concrete)
+
+* Full frontend folder with components/pages from earlier scaffold (TSX).
+* Backend project in TypeScript:
+
+  * Controllers, services, models, routes, middlewares, jobs, sockets.
+* Postman collection or OpenAPI (Swagger) doc covering all endpoints and request/response examples.
+* Docker Compose for local dev (mongo, redis, backend, frontend).
+* Seed script to populate: admin user, 3 owners with stripeConnected=false, 10 properties with rooms, 20 seekers, 30 bookings (various statuses).
+* Tests: unit + integration + one E2E spec (Cypress) for critical booking flow (with Stripe mocked).
+* README with run instructions and environment variables.
+
+---
+
+## RUN & DEV SCRIPTS (example)
+
+**backend/package.json**
+
+```json
+"scripts": {
+  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+  "start": "node dist/server.js",
+  "build": "tsc",
+  "test": "jest --runInBand",
+  "lint": "eslint . --ext .ts,.tsx"
+}
+```
+
+**frontend/package.json**
+
+```json
+"scripts": {
+  "start": "vite",
+  "build": "vite build",
+  "test": "vitest",
+  "lint": "eslint . --ext .ts,.tsx",
+  "preview": "vite preview"
+}
+```
+
+---
+
+## FINAL NOTES / RECOMMENDATIONS
+
+* Keep business logic in services, controllers should orchestrate.
+* Design API with idempotency in mind (idempotency keys for payments).
+* Use feature flags for big changes (e.g., enable/disable Stripe Connect requirement).
+* For early MVP, mock Stripe Connect flow to speed development; switch to live after QA.
+* Document decisions and keep the OpenAPI spec current.
+
+---
+
+this is the complete understanding of that project so make things according to it 
